@@ -3,10 +3,13 @@ import './index.css'
 import App from './App.tsx'
 
 // React Router dom
-import {BrowserRouter} from 'react-router-dom'
+import { BrowserRouter } from 'react-router-dom'
+import { Providers } from './providers.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <App />
+    <Providers>
+      <App />
+    </Providers>
   </BrowserRouter>,
 )

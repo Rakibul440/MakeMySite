@@ -11,19 +11,3 @@ const openai = new OpenAI({
 });
 
 export default openai;
-
-// async function main() {
-//     const completion = await openai.chat.completions.create({
-//         model: "z-ai/glm-4.5-air:free",
-//         messages: [
-//             {
-//                 "role": "user",
-//                 "content": "What is the meaning of life?"
-//             }
-//         ]
-//     });
-
-//     console.log(completion.choices[0].message);
-// }
-
-// main();

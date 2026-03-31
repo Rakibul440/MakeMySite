@@ -210,4 +210,112 @@ export const createUserProject = async (req: Request, res: Response) => {
 
 }
 
-// COntroller Function to get single use projects
+// Controller Function to get single use projects
+export const getUserProject = async (req: Request, res: Response) => {
+
+    try {
+        const userId = req.userId;
+        if (!userId) return res.status(401).json({ message: "Unauthorized" })
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        })
+
+        const { projectId } = req.params;
+
+        const id = Array.isArray(projectId) ? projectId[0] : projectId;
+
+        const project = await prisma.websiteProject.findUnique({
+            where: {
+                id: id,
+                userId: userId
+            },
+            include: {
+                conversation: {
+                    orderBy: { timestamp: "asc" }
+                },
+                versions: {
+                    orderBy: { timestamp: 'asc' }
+                }
+            }
+        })
+
+        res.status(200).json({ project })
+
+    } catch (error: any) {
+        console.log(error.code || error.message)
+        res.status(500).json({ message: error.message })
+    }
+
+}
+
+// Controller function to get all user project
+export const getAllProjects = async (req: Request, res: Response) => {
+
+    try {
+        const userId = req.userId;
+        if (!userId) return res.status(401).json({ message: "Unauthorized" })
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        })
+
+        const projects = await prisma.websiteProject.findMany({
+            where: { userId: userId },
+            orderBy: { updatedAt: "desc" }
+        })
+
+        res.status(200).json({ projects })
+
+    } catch (error: any) {
+        console.log(error.code || error.message)
+        res.status(500).json({ message: error.message })
+    }
+
+}
+
+// Controller function to toggle project publish
+export const toggleProjectPublish = async (req: Request, res: Response) => {
+
+    try {
+        const userId = req.userId;
+        if (!userId) return res.status(401).json({ message: "Unauthorized" })
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        })
+
+        const { projectId } = req.params;
+        const id = Array.isArray(projectId) ? projectId[0] : projectId;
+
+        const project = await prisma.websiteProject.findUnique({
+            where: { id: id, userId: userId }
+        })
+
+        if (!project) return res.status(401).json({ message: "Project not found" })
+
+        await prisma.websiteProject.update({
+            where: { id: id },
+            data: {
+                isPublished: !project.isPublished
+            }
+        })
+
+
+
+        res.status(200).json({ message: project.isPublished ? "Project Unpublished" : "Project Published Successfully " })
+
+    } catch (error: any) {
+        console.log(error.code || error.message)
+        res.status(500).json({ message: error.message })
+    }
+
+}
+
+// controller Function for purchase credits
+export const purchaseCredits = async (req: Request, res: Response) => {
+
+
+
+
+}

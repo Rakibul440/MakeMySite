@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import openai from "../configs/openai.js";
-
+import 'dotenv/config'
 // Controller Function to make Revision
 export const makeRevision = async (req: Request, res: Response) => {
 
@@ -51,7 +51,7 @@ export const makeRevision = async (req: Request, res: Response) => {
 
         // Enhanced Prompt
         const enhancedPromptResponse = await openai.chat.completions.create({
-            model: "z-ai/glm-4.5-air:free",
+            model: `${process.env.AI_MODEL}`,
             messages: [
                 {
                     role: "system",
@@ -85,7 +85,7 @@ export const makeRevision = async (req: Request, res: Response) => {
         })
 
         const codeGenerationResponse = await openai.chat.completions.create({
-            model: "z-ai/glm-4.5-air:free",
+            model: `${process.env.AI_MODEL}`,
             messages: [
                 {
                     role: "system",
@@ -115,6 +115,28 @@ export const makeRevision = async (req: Request, res: Response) => {
         })
 
         const code = codeGenerationResponse.choices[0].message.content || "";
+
+
+        // if code is not generated then increase credits
+        if (!code) {
+            await prisma.conversation.create({
+                data: {
+                    role: 'assistant',
+                    content: "Failed to generate code, Try again.",
+                    projectId: id
+                }
+            })
+
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    credits: { increment: 5 }
+                }
+            })
+
+            return;
+        }
+
         const version = await prisma.version.create({
             data: {
                 code: code.replace(/```[a-z]*\n?/gi, '')

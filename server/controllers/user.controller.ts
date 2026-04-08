@@ -1,6 +1,8 @@
 import { Request, Response } from "express"
 import prisma from "../lib/prisma.js";
 import openai from "../configs/openai.js";
+import dotenv from 'dotenv'
+dotenv.config()
 
 // get user Credits
 export const getUserCredits = async (req: Request, res: Response) => {
@@ -76,7 +78,7 @@ export const createUserProject = async (req: Request, res: Response) => {
 
         // Enhanced User prompt
         const promptEnhanceResponse = await openai.chat.completions.create({
-            model: "z-ai/glm-4.5-air:free",
+            model: `${process.env.AI_MODEL}`,
             messages: [
                 {
                     role: "system",
@@ -123,7 +125,7 @@ export const createUserProject = async (req: Request, res: Response) => {
 
         // generate website code
         const codeGenerationResponse = await openai.chat.completions.create({
-            model: "z-ai/glm-4.5-air:free",
+            model: `${process.env.AI_MODEL}`,
             messages: [
                 {
                     role: "system",
@@ -164,6 +166,26 @@ export const createUserProject = async (req: Request, res: Response) => {
         })
 
         const code = codeGenerationResponse.choices[0].message.content || "";
+
+        // if code is not generated then increase credits
+        if (!code) {
+            await prisma.conversation.create({
+                data: {
+                    role: 'assistant',
+                    content: "Failed to generate code, Try again.",
+                    projectId: project.id
+                }
+            })
+
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    credits: { increment: 5 }
+                }
+            })
+
+            return;
+        }
 
         // Create version for the project
         const version = await prisma.version.create({

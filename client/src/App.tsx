@@ -7,8 +7,10 @@ import {
   Preview,
   Pricing,
   Projects,
-  View
+  View,
+  LandingPage
 } from "./pages/index.ts"
+
 import Navbar from './components/Navbar.tsx'
 // Toster import
 import { Toaster } from "@/components/ui/sonner"
@@ -30,6 +32,8 @@ export default function App() {
       <Routes>
         <Route path='/' element={<Home />} />
         <Route path='/pricing' element={<Pricing />} />
+        <Route path='/landingPage' element={<LandingPage />} />
+
         <Route path='/projects' element={<MyProjects />} />
         <Route path='/projects/:projectId' element={<Projects />} />
         <Route path='/preview/:projectId' element={<Preview />} />

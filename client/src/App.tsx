@@ -30,9 +30,9 @@ export default function App() {
       <Toaster />
       {!hideNavbar && <Navbar />}
       <Routes>
-        <Route path='/' element={<Home />} />
+        <Route path='/' element={<LandingPage />} />
         <Route path='/pricing' element={<Pricing />} />
-        <Route path='/landingPage' element={<LandingPage />} />
+        {/* <Route path='/landingPage' element={<LandingPage />} /> */}
 
         <Route path='/projects' element={<MyProjects />} />
         <Route path='/projects/:projectId' element={<Projects />} />

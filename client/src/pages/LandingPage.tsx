@@ -46,6 +46,9 @@ export default function LandingPage(): JSX.Element {
   const [glitch, setGlitch] = useState<boolean>(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const { data: session } = authClient.useSession();
+  const navigate = useNavigate();
+
   // Typewriter effect for placeholder
   useEffect(() => {
     if (focused) return;
@@ -84,43 +87,38 @@ export default function LandingPage(): JSX.Element {
     return () => clearInterval(interval);
   }, []);
 
-
-  const { data: session } = authClient.useSession();
-  const navigate = useNavigate()
-
-  //  e: React.FormEvent<HTMLFormElement>
-  const handleGenerate = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleGenerate = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
-    setSubmitted(true)
 
     try {
       if (!session?.user) {
-        toast.error('Please sign in to create a project') // toast from 'sonner'
-        navigate("/auth/sign")
+        toast.error("Please sign in to create a project");
+        navigate("/auth/sign");
         return;
       }
-      else if (!prompt.trim()) {
-        return toast.error('Please enter your prompt')
+      if (!prompt.trim()) {
+        toast.error("Please enter your prompt");
+        return;
+      }
+      if (prompt.length < 50) {
+        toast.error("Prompt should be contain mininum 50 character");
+        return;
       }
 
-      // if all ok setloading true
-      // setSubmitted(true)
+      setSubmitted(true);
 
       const { data } = await api.post("/api/user/project", {
-        initial_prompt: prompt
-      })
+        initial_prompt: prompt,
+      });
 
       setSubmitted(false);
-      navigate(`/projects/${data.projectId}`)
-
+      navigate(`/projects/${data.projectId}`);
     } catch (error: any) {
-      setSubmitted(false)
+      setSubmitted(false);
       toast.error(error?.response?.data?.message || error.message);
-      console.log(error)
+      console.log(error);
     }
-
-  }
-
+  };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>): void => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -206,79 +204,78 @@ export default function LandingPage(): JSX.Element {
           ))}
         </div>
 
-        {/* Prompt area */}
-        <div
-          className={`w-full max-w-2xl relative rounded-xl border transition-all duration-300 ${focused
-            ? "border-white/30 shadow-[0_0_40px_rgba(255,255,255,0.07)]"
-            : "border-white/10"
-            } bg-white/[0.025] backdrop-blur-md`}
-        >
-          {/* Terminal dot row */}
-          <div className="flex items-center gap-1.5 px-4 pt-3.5 pb-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-white/10" />
-            <span className="w-2.5 h-2.5 rounded-full bg-white/10" />
-            <span className="w-2.5 h-2.5 rounded-full bg-white/10" />
-            <span className="ml-3 text-[10px] text-white/15 tracking-widest uppercase">prompt.tsx</span>
-          </div>
-
-          <div className="px-4 pt-3 pb-4">
-            <div className="flex gap-2 text-white/15 text-xs mb-2 font-mono">
-              <span className="text-white/30">›</span>
-              <span>describe your site</span>
-            </div>
-            <textarea
-              ref={textareaRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setFocused(false)}
-              onKeyDown={handleKeyDown}
-              placeholder={focused ? "" : placeholder}
-              rows={4}
-              className="w-full bg-transparent text-white/80 text-sm leading-relaxed resize-none outline-none placeholder-white/20 caret-white"
-              style={{ fontFamily: "'Courier New', monospace" }}
-            />
-          </div>
-
-          {/* Bottom bar */}
-          <div className="flex items-center justify-between px-4 pb-4 pt-1 border-t border-white/[0.06]">
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] text-white/15 tracking-wide">
-                {prompt.length > 0 ? `${prompt.length} chars` : "⌘ + Enter to submit"}
-              </span>
-              {prompt.length > 0 && (
-                <button
-                  onClick={() => setPrompt("")}
-                  className="text-[10px] text-white/20 hover:text-white/40 transition-colors"
-                >
-                  clear
-                </button>
-              )}
+        {/* Prompt area — form wraps entire box so textarea handleKeyDown can requestSubmit() */}
+        <form onSubmit={handleGenerate} className="w-full max-w-2xl">
+          <div
+            className={`w-full relative rounded-xl border transition-all duration-300 ${focused
+              ? "border-white/30 shadow-[0_0_40px_rgba(255,255,255,0.07)]"
+              : "border-white/10"
+              } bg-white/[0.025] backdrop-blur-md`}
+          >
+            {/* Terminal dot row */}
+            <div className="flex items-center gap-1.5 px-4 pt-3.5 pb-0">
+              <span className="w-2.5 h-2.5 rounded-full bg-white/10" />
+              <span className="w-2.5 h-2.5 rounded-full bg-white/10" />
+              <span className="w-2.5 h-2.5 rounded-full bg-white/10" />
+              <span className="ml-3 text-[10px] text-white/15 tracking-widest uppercase">prompt.tsx</span>
             </div>
 
-            <form
-              onSubmit={handleGenerate}
-            >
+            <div className="px-4 pt-3 pb-4">
+              <div className="flex gap-2 text-white/15 text-xs mb-2 font-mono">
+                <span className="text-white/30">›</span>
+                <span>describe your site</span>
+              </div>
+              <textarea
+                ref={textareaRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                onKeyDown={handleKeyDown}
+                placeholder={focused ? "" : placeholder}
+                rows={4}
+                className="w-full bg-transparent text-white/80 text-sm leading-relaxed resize-none outline-none placeholder-white/20 caret-white"
+                style={{ fontFamily: "'Courier New', monospace" }}
+              />
+            </div>
+
+            {/* Bottom bar */}
+            <div className="flex items-center justify-between px-4 pb-4 pt-1 border-t border-white/[0.06]">
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-white/15 tracking-wide">
+                  {prompt.length > 0 ? `${prompt.length} chars` : "⌘ + Enter to submit"}
+                </span>
+                {prompt.length > 0 && !submitted && (
+                  <button
+                    type="button"
+                    onClick={() => setPrompt("")}
+                    className="text-[10px] text-white/20 hover:text-white/40 transition-colors"
+                  >
+                    clear
+                  </button>
+                )}
+              </div>
+
               <button
                 type="submit"
                 disabled={!prompt.trim() || submitted}
-                className={`flex items-center gap-2 px-5 py-2 text-xs font-bold uppercase tracking-widest rounded-lg border transition-all duration-200 ${prompt.trim()
+                className={`flex items-center gap-2 px-5 py-2 text-xs font-bold uppercase tracking-widest rounded-lg border transition-all duration-200 ${prompt.trim() && !submitted
                   ? "bg-white text-black border-white hover:bg-white/90 hover:scale-[1.02] active:scale-[0.98]"
                   : "bg-transparent text-white/20 border-white/10 cursor-not-allowed"
                   }`}
               >
                 {submitted ? (
                   <>
-                    <span className="w-2 h-2 rounded-full bg-black animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-white/40 animate-pulse" />
                     Generating...
                   </>
                 ) : (
                   <>Generate →</>
                 )}
               </button>
-            </form>
+            </div>
           </div>
-        </div>
+        </form>
 
         {/* Success state */}
         {submitted && (

@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import prisma from "../lib/prisma.js";
 import openai from "../configs/openai.js";
 import 'dotenv/config'
+import { gemini } from "../configs/gemini.js";
+
+
 // Controller Function to make Revision
 export const makeRevision = async (req: Request, res: Response) => {
 
@@ -50,31 +53,69 @@ export const makeRevision = async (req: Request, res: Response) => {
         })
 
         // Enhanced Prompt
-        const enhancedPromptResponse = await openai.chat.completions.create({
-            model: `${process.env.AI_MODEL}`,
-            messages: [
+        // const enhancedPromptResponse = await openai.chat.completions.create({
+        //     model: `${process.env.AI_MODEL}`,
+        //     messages: [
+        //         {
+        //             role: "system",
+        //             content: `
+        //                 You are a prompt enhancement specialist. The user wants to make changes to their website. Enhance their request to be more specific and actionable for a web developer.
+
+        //                 Enhance this by:
+        //                 1. Being specific about what elements to change
+        //                 2. Mentioning design details (colors, spacing, sizes)
+        //                 3. Clarifying the desired outcome
+        //                 4. Using clear technical terms
+
+        //                 Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
+
+        //             `
+        //         },
+        //         {
+        //             role: "user",
+        //             content: `User's Request : "${message}"`
+        //         }
+        //     ]
+        // })
+
+        const promptEnhanceResponseByGemini = await gemini.generateContent({
+            contents: [
                 {
-                    role: "system",
-                    content: `
-                        You are a prompt enhancement specialist. The user wants to make changes to their website. Enhance their request to be more specific and actionable for a web developer.
+                    role: "user",
+                    parts: [
+                        {
+                            text: `
+                                You are a prompt enhancement specialist. The user wants to make changes to their website. Enhance their request to be more specific and actionable for a web developer.
 
-                        Enhance this by:
-                        1. Being specific about what elements to change
-                        2. Mentioning design details (colors, spacing, sizes)
-                        3. Clarifying the desired outcome
-                        4. Using clear technical terms
+                                Enhance this by:
+                                1. Being specific about what elements to change
+                                2. Mentioning design details (colors, spacing, sizes)
+                                3. Clarifying the desired outcome
+                                4. Using clear technical terms
 
-                        Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
+                                Return ONLY the enhanced request, nothing else. Keep it concise (1-2 sentences).
 
-                    `
+                            `,
+                        }
+                    ]
                 },
                 {
                     role: "user",
-                    content: `User's Request : "${message}"`
+                    parts: [
+                        {
+                            text: `User's Request : "${message}"`
+                        }
+                    ]
                 }
             ]
         })
-        const enhancedPrompt = enhancedPromptResponse.choices[0].message.content;
+        // const enhancedPrompt = enhancedPromptResponse.choices[0].message.content;
+
+        let enhancedPromptByGemini = promptEnhanceResponseByGemini.response.text();
+        enhancedPromptByGemini = enhancedPromptByGemini
+            .replace(/```html/g, "")
+            .replace(/```/g, "")
+            .trim();
 
         await prisma.conversation.create({
             data: {
@@ -84,41 +125,84 @@ export const makeRevision = async (req: Request, res: Response) => {
             }
         })
 
-        const codeGenerationResponse = await openai.chat.completions.create({
-            model: `${process.env.AI_MODEL}`,
-            messages: [
+        // const codeGenerationResponse = await openai.chat.completions.create({
+        //     model: `${process.env.AI_MODEL}`,
+        //     messages: [
+        //         {
+        //             role: "system",
+        //             content: `
+        //                 You are an expert web developer. 
+
+        //                 CRITICAL REQUIREMENTS:
+        //                 - Return ONLY the complete updated HTML code with the requested changes.
+        //                 - Use Tailwind CSS for ALL styling (NO custom CSS).
+        //                 - Use Tailwind utility classes for all styling changes.
+        //                 - Include all JavaScript in <script> tags before closing </body>
+        //                 - Make sure it's a complete, standalone HTML document with Tailwind CSS
+        //                 - Return the HTML Code Only, nothing else
+
+        //                 Apply the requested changes while maintaining the Tailwind CSS styling approach.
+
+        //             `
+        //         },
+        //         {
+        //             role: "user",
+        //             content: `
+        //                 Here is the current website code : "${currentProject.current_code}" 
+        //                 The user wants this changes "${enhancedPrompt}"
+        //             `
+        //         }
+        //     ]
+        // })
+
+        const codeGenerationResponseByGemini = await gemini.generateContent({
+            contents: [
                 {
-                    role: "system",
-                    content: `
-                        You are an expert web developer. 
+                    role: "user",
+                    parts: [
+                        {
+                            text:
+                                `
+                                You are an expert web developer. 
 
-                        CRITICAL REQUIREMENTS:
-                        - Return ONLY the complete updated HTML code with the requested changes.
-                        - Use Tailwind CSS for ALL styling (NO custom CSS).
-                        - Use Tailwind utility classes for all styling changes.
-                        - Include all JavaScript in <script> tags before closing </body>
-                        - Make sure it's a complete, standalone HTML document with Tailwind CSS
-                        - Return the HTML Code Only, nothing else
+                                CRITICAL REQUIREMENTS:
+                                - Return ONLY the complete updated HTML code with the requested changes.
+                                - Use Tailwind CSS for ALL styling (NO custom CSS).
+                                - Use Tailwind utility classes for all styling changes.
+                                - Include all JavaScript in <script> tags before closing </body>
+                                - Make sure it's a complete, standalone HTML document with Tailwind CSS
+                                - Return the HTML Code Only, nothing else
 
-                        Apply the requested changes while maintaining the Tailwind CSS styling approach.
+                                Apply the requested changes while maintaining the Tailwind CSS styling approach.
 
-                    `
+                            `
+                        }
+                    ]
                 },
                 {
                     role: "user",
-                    content: `
-                        Here is the current website code : "${currentProject.current_code}" 
-                        The user wants this changes "${enhancedPrompt}"
-                    `
+                    parts: [
+                        {
+                            text: `
+                                Here is the current website code : "${currentProject.current_code}" 
+                                The user wants this changes "${enhancedPromptByGemini}"
+                             `
+                        }
+                    ]
                 }
             ]
         })
 
-        const code = codeGenerationResponse.choices[0].message.content || "";
+        // const code = codeGenerationResponse.choices[0].message.content || "";
 
+        let codeByGemini = codeGenerationResponseByGemini.response.text();
+        codeByGemini = codeByGemini
+            .replace(/```[a-zA-Z]*\n?/g, "")
+            .replace(/```/g, "")
+            .trim();
 
         // if code is not generated then increase credits
-        if (!code) {
+        if (!codeByGemini) {
             await prisma.conversation.create({
                 data: {
                     role: 'assistant',
@@ -139,9 +223,7 @@ export const makeRevision = async (req: Request, res: Response) => {
 
         const version = await prisma.version.create({
             data: {
-                code: code.replace(/```[a-z]*\n?/gi, '')
-                    .replace(/```$/g, '')
-                    .trim(),
+                code: codeByGemini,
                 description: "Changes made",
                 projectId: id
             }
@@ -158,9 +240,7 @@ export const makeRevision = async (req: Request, res: Response) => {
         await prisma.websiteProject.update({
             where: { id: id },
             data: {
-                current_code: code.replace(/```[a-z]*\n?/gi, '')
-                    .replace(/```$/g, '')
-                    .trim(),
+                current_code: codeByGemini,
                 current_version_index: version.id
             }
         })

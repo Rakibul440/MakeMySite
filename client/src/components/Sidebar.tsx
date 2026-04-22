@@ -34,6 +34,7 @@ function Sidebar({ isMenuOpen, project, setProject, isGenerating, setIsGeneratin
 
         } catch (error: any) {
             //  setIsGenerating(false)
+            console.log(versionId)
             toast.error(error?.response?.data?.message || error.message);
             console.log(error)
             // clearInterval(interval)

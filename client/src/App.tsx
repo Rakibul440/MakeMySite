@@ -2,7 +2,6 @@ import { Route, Routes, useLocation } from 'react-router-dom'
 
 import {
   Community,
-  Home,
   MyProjects,
   Preview,
   Pricing,

@@ -55,7 +55,7 @@ function Projects() {
   }
 
   const saveProject = () => {
-
+    setIsSaving(true)
   }
 
   const fetchProject = async () => {
